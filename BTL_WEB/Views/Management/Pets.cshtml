@@ -49,19 +49,25 @@
 
     var dogDirectory = dogDirectoryCandidates.FirstOrDefault(d => d.Exists) ?? dogDirectoryCandidates[0];
     var catDirectory = catDirectoryCandidates.FirstOrDefault(d => d.Exists) ?? catDirectoryCandidates[0];
-    var dogWebPrefix = dogDirectory.FullName.Contains("\\img\\img\\img dog", StringComparison.OrdinalIgnoreCase)
-        ? "/img/img/img%20dog"
-        : "/img/img%20dog";
-    var catWebPrefix = catDirectory.FullName.Contains("\\img\\img\\img cat", StringComparison.OrdinalIgnoreCase)
-        ? "/img/img/img%20cat"
-        : "/img/img%20cat";
+
+    string ToWebPath(global::System.IO.FileInfo fileInfo)
+    {
+        var relativePath = fileInfo.FullName
+            .Replace(WebHostEnvironment.WebRootPath, string.Empty)
+            .TrimStart('\\', '/')
+            .Replace('\\', '/');
+
+        return "/" + string.Join('/', relativePath
+            .Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .Select(Uri.EscapeDataString));
+    }
     var imageExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
 
     var dogFallbackImagesJson = JsonSerializer.Serialize(
         dogDirectory.Exists
             ? dogDirectory.GetFiles()
                 .Where(x => imageExtensions.Contains(x.Extension))
-                .Select(x => $"{dogWebPrefix}/{Uri.EscapeDataString(x.Name)}")
+                .Select(ToWebPath)
                 .ToList()
             : new List<string>());
 
@@ -69,7 +75,7 @@
         catDirectory.Exists
             ? catDirectory.GetFiles()
                 .Where(x => imageExtensions.Contains(x.Extension))
-                .Select(x => $"{catWebPrefix}/{Uri.EscapeDataString(x.Name)}")
+                .Select(ToWebPath)
                 .ToList()
             : new List<string>());
 }
