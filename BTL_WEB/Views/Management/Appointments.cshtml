@@ -1,11 +1,11 @@
 @model BTL_WEB.Models.ViewModels.AppointmentsPageViewModel
 
 @{
-    Layout = "_Layout";
+    var isStaffOrAdmin = ViewBag.IsStaffOrAdmin as bool? == true;
+    Layout = isStaffOrAdmin ? "_Layout" : "~/Views/Shared/_LayoutPetcarehub.cshtml";
     var pets = ViewBag.PetOptions as IEnumerable<dynamic> ?? [];
     var branches = ViewBag.BranchOptions as IEnumerable<dynamic> ?? [];
     var services = ViewBag.ServiceOptions as IEnumerable<dynamic> ?? [];
-    var isStaffOrAdmin = ViewBag.IsStaffOrAdmin as bool? == true;
     ViewData["Title"] = isStaffOrAdmin ? "Quản lý lịch hẹn" : "Lịch hẹn của tôi";
     var minAppointmentDateTime = DateTime.Now.ToString("yyyy-MM-ddTHH:mm");
     var defaultAppointmentDateTime = DateTime.Now.AddMinutes(30).ToString("yyyy-MM-ddTHH:mm");
@@ -25,13 +25,23 @@
             }
 
             .appointment-action-cell {
-                min-width: 180px;
+                min-width: 150px;
             }
 
             .appointment-action-group {
                 display: flex;
                 flex-wrap: wrap;
                 gap: .35rem;
+            }
+
+            .appointment-table .btn-sm {
+                padding: .2rem .45rem;
+                font-size: .78rem;
+            }
+
+            .appointment-table td,
+            .appointment-table th {
+                font-size: .9rem;
             }
         </style>
 
@@ -163,19 +173,17 @@
                         @if (isStaffOrAdmin)
                         {
                             <th>AppointmentID</th>
-                            <th>UserID</th>
                             <th>Khách hàng</th>
-                            <th>PetID</th>
-                            <th>BranchID</th>
                         }
                         <th>Thú cưng</th>
                         <th>Chi nhánh</th>
                         <th>Thời gian</th>
                         <th>Trạng thái</th>
-                        <th>Ghi chú</th>
+                        <th>Thanh toán</th>
                         @if (isStaffOrAdmin)
                         {
                             <th>Duyệt lịch</th>
+                            <th>Xác nhận thanh toán</th>
                         }
                     </tr>
                 </thead>
@@ -183,7 +191,7 @@
                     @if (Model.Appointments.Count == 0)
                     {
                         <tr>
-                            <td colspan="@(isStaffOrAdmin ? 11 : 5)" class="text-center text-muted">Không có lịch hẹn phù hợp bộ lọc.</td>
+                            <td colspan="@(isStaffOrAdmin ? 9 : 5)" class="text-center text-muted">Không có lịch hẹn phù hợp bộ lọc.</td>
                         </tr>
                     }
                     else
@@ -191,20 +199,30 @@
                         @foreach (var item in Model.Appointments)
                         {
                             var statusKey = (item.Status ?? string.Empty).Trim().ToLowerInvariant();
+                            var paymentStatusKey = (item.PaymentStatus ?? string.Empty).Trim().ToLowerInvariant();
+                            var paymentBadgeClass = paymentStatusKey switch
+                            {
+                                "paid" => "badge-success",
+                                "failed" => "badge-danger",
+                                _ => "badge-warning"
+                            };
+                            var paymentLabel = paymentStatusKey switch
+                            {
+                                "paid" => "Đã thanh toán",
+                                "failed" => "Thanh toán lỗi",
+                                _ => "Chưa thanh toán"
+                            };
                             <tr>
                                 @if (isStaffOrAdmin)
                                 {
                                     <td>@item.AppointmentId</td>
-                                    <td>@item.UserId</td>
                                     <td class="text-wrap-cell">@item.UserName</td>
-                                    <td>@item.PetId</td>
-                                    <td>@item.BranchId</td>
                                 }
                                 <td>@item.PetName</td>
                                 <td class="text-wrap-cell">@item.BranchName</td>
                                 <td>@item.AppointmentDateTime.ToString("dd/MM/yyyy HH:mm")</td>
                                 <td><span class="badge @StatusDisplay.BadgeClass(item.Status)">@StatusDisplay.Label(item.Status)</span></td>
-                                <td class="text-wrap-cell">@(string.IsNullOrWhiteSpace(item.Notes) ? "Không có" : item.Notes)</td>
+                                <td><span class="badge @paymentBadgeClass">@paymentLabel</span></td>
                                 @if (isStaffOrAdmin)
                                 {
                                     <td class="appointment-action-cell">
@@ -216,7 +234,7 @@
                                                     <input type="hidden" name="appointmentId" value="@item.AppointmentId" />
                                                     <input type="hidden" name="status" value="Confirmed" />
                                                     <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
-                                                    <button type="submit" class="btn btn-sm btn-success">Xác nhận</button>
+                                                    <button type="submit" class="btn btn-sm btn-success">Duyệt</button>
                                                 </form>
                                                 <form method="post" asp-action="UpdateAppointmentStatus" class="d-inline">
                                                     @Html.AntiForgeryToken()
@@ -250,6 +268,24 @@
                                         {
                                             <span class="text-muted">-</span>
                                         }
+                                    </td>
+                                    <td class="appointment-action-cell">
+                                        <div class="appointment-action-group">
+                                            <form method="post" asp-action="UpdateAppointmentPaymentStatus" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="appointmentId" value="@item.AppointmentId" />
+                                                <input type="hidden" name="paymentStatus" value="Paid" />
+                                                <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+                                                <button type="submit" class="btn btn-sm btn-success" @(paymentStatusKey == "paid" ? "disabled" : null)>Đã thanh toán</button>
+                                            </form>
+                                            <form method="post" asp-action="UpdateAppointmentPaymentStatus" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="appointmentId" value="@item.AppointmentId" />
+                                                <input type="hidden" name="paymentStatus" value="Pending" />
+                                                <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary" @(paymentStatusKey != "paid" ? "disabled" : null)>Chưa TT</button>
+                                            </form>
+                                        </div>
                                     </td>
                                 }
                             </tr>

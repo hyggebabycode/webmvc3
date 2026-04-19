@@ -95,13 +95,13 @@ public class PetsController : Controller
         return View(pet);
     }
 
-    [Authorize(Policy = RoleNames.StaffOrAdmin)]
+    [Authorize(Policy = RoleNames.AdminOnly)]
     public async Task<IActionResult> Create()
     {
         return View(await BuildPetFormViewModelAsync(new PetFormViewModel()));
     }
 
-    [Authorize(Policy = RoleNames.StaffOrAdmin)]
+    [Authorize(Policy = RoleNames.AdminOnly)]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(PetFormViewModel model)
@@ -137,7 +137,7 @@ public class PetsController : Controller
         return RedirectToAction(nameof(Details), new { id = pet.PetId });
     }
 
-    [Authorize(Policy = RoleNames.StaffOrAdmin)]
+    [Authorize(Policy = RoleNames.AdminOnly)]
     public async Task<IActionResult> Edit(int id)
     {
         var pet = await _context.Pets.FindAsync(id);
@@ -168,7 +168,7 @@ public class PetsController : Controller
         return View(await BuildPetFormViewModelAsync(model));
     }
 
-    [Authorize(Policy = RoleNames.StaffOrAdmin)]
+    [Authorize(Policy = RoleNames.AdminOnly)]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(int id, PetFormViewModel model)
@@ -210,7 +210,7 @@ public class PetsController : Controller
         return RedirectToAction(nameof(Details), new { id = pet.PetId });
     }
 
-    [Authorize(Policy = RoleNames.StaffOrAdmin)]
+    [Authorize(Policy = RoleNames.AdminOnly)]
     public async Task<IActionResult> Delete(int id)
     {
         var pet = await _context.Pets
@@ -225,7 +225,7 @@ public class PetsController : Controller
         return View(pet);
     }
 
-    [Authorize(Policy = RoleNames.StaffOrAdmin)]
+    [Authorize(Policy = RoleNames.AdminOnly)]
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteConfirmed(int id)
@@ -241,7 +241,7 @@ public class PetsController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    [Authorize(Policy = RoleNames.StaffOrAdmin)]
+    [Authorize(Policy = RoleNames.AdminOnly)]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UploadImages(UploadPetImageViewModel model)

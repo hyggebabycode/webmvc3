@@ -2,7 +2,8 @@
 
 @{
     ViewData["Title"] = "Hồ sơ cá nhân";
-    Layout = "_Layout";
+    var isStaffOrAdmin = User.IsInRole(RoleNames.Admin) || User.IsInRole(RoleNames.Staff);
+    Layout = isStaffOrAdmin ? "_Layout" : "~/Views/Shared/_LayoutPetcarehub.cshtml";
 }
 
 <section class="ftco-section bg-light">

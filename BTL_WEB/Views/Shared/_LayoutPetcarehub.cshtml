@@ -25,30 +25,40 @@
         }
 
         .petcare-nav-main .user-nav-search {
-            display: flex;
-            align-items: center;
-            flex-wrap: nowrap;
-            gap: .4rem;
             margin-bottom: 0;
         }
 
-        .petcare-nav-main .user-nav-search .form-control {
-            min-width: 150px;
-            height: 34px;
-            border-radius: 999px;
-            margin-right: 0;
-            width: auto;
-            flex: 1 1 auto;
+        .petcare-nav-main .user-nav-search .input-group {
+            flex-wrap: nowrap;
+            align-items: stretch;
         }
 
-        .petcare-nav-main .user-nav-search .btn {
-            border-radius: 999px;
-            width: 34px;
-            height: 34px;
+        .petcare-nav-main .user-nav-search .input-group.input-group-sm > .form-control {
+            min-width: 220px;
+            height: 36px !important;
+            border-radius: 999px 0 0 999px;
+            border-right: 0;
+            margin: 0;
+            padding: 0 .9rem;
+            font-size: .95rem;
+        }
+
+        .petcare-nav-main .user-nav-search .input-group.input-group-sm > .input-group-append > .btn {
+            width: 36px;
+            min-width: 36px;
+            height: 36px !important;
+            border-radius: 0 999px 999px 0;
+            margin: 0;
+            padding: 0;
+            line-height: 1;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            flex: 0 0 auto;
+        }
+
+        .petcare-nav-main .user-nav-search .btn .fa {
+            font-size: 14px;
+            line-height: 1;
         }
 
         .public-avatar-fallback {
@@ -63,6 +73,72 @@
             font-weight: 700;
         }
 
+        .public-avatar-img {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #d8f0de;
+        }
+
+        .quick-create-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            display: none;
+        }
+
+        .quick-create-modal.show {
+            display: block;
+        }
+
+        .quick-create-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, .45);
+        }
+
+        .quick-create-dialog {
+            position: relative;
+            width: min(960px, calc(100vw - 2rem));
+            height: min(82vh, 760px);
+            margin: 4vh auto;
+            background: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 22px 60px rgba(0, 0, 0, .25);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .quick-create-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: .7rem 1rem;
+            border-bottom: 1px solid #edf0f2;
+        }
+
+        .quick-create-frame {
+            width: 100%;
+            height: 100%;
+            border: 0;
+            flex: 1 1 auto;
+        }
+
+        body.iframe-modal-view .wrap {
+            display: none !important;
+        }
+
+        body.iframe-modal-view .petcare-nav-main .navbar-toggler {
+            display: none !important;
+        }
+
+        body.iframe-modal-view .petcare-nav-main {
+            padding-top: .35rem;
+            padding-bottom: .35rem;
+        }
+
         @@media (min-width: 992px) {
             .petcare-nav-main .navbar-nav > .nav-item > .nav-link {
                 padding-left: .65rem;
@@ -74,8 +150,20 @@
 <body>
     @{
         var isLoggedIn = Context.User.Identity?.IsAuthenticated == true;
-        var displayName = Context.User.FindFirst(ClaimNames.FullName)?.Value ?? Context.User.Identity?.Name ?? "Khách";
+        var isAdmin = Context.User.IsInRole(RoleNames.Admin);
+        var isStaff = Context.User.IsInRole(RoleNames.Staff);
+        var isStaffOrAdmin = isAdmin || isStaff;
+        var displayName = Context.Session.GetString(ClaimNames.FullName)
+            ?? Context.User.FindFirst(ClaimNames.FullName)?.Value
+            ?? Context.User.Identity?.Name
+            ?? "Khách";
+        var avatarUrl = Context.Session.GetString("ProfileAvatarUrl");
         var avatarInitial = string.IsNullOrWhiteSpace(displayName) ? "U" : displayName.Trim().Substring(0, 1).ToUpper();
+        var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+        var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+        var hideSearchBox = string.Equals(currentController, "Account", StringComparison.OrdinalIgnoreCase)
+            && (string.Equals(currentAction, "Login", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(currentAction, "Register", StringComparison.OrdinalIgnoreCase));
     }
 
     <div class="wrap">
@@ -109,41 +197,110 @@
             </button>
             <div class="collapse navbar-collapse" id="ftco-nav">
                 <ul class="navbar-nav mr-auto align-items-lg-center">
-                    <li class="nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : string.Empty)">
-                        <a asp-controller="Home" asp-action="Index" class="nav-link">Tổng quan</a>
-                    </li>
-                    <li class="nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Services" ? "active" : string.Empty)">
-                        <a asp-controller="Services" asp-action="Catalog" class="nav-link">Dịch vụ</a>
-                    </li>
-                    <li class="nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Management" && ViewContext.RouteData.Values["action"]?.ToString() == "Pets" ? "active" : string.Empty)">
-                        <a asp-controller="Management" asp-action="Pets" class="nav-link">Thú cưng</a>
-                    </li>
-                    <li class="nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Management" && ViewContext.RouteData.Values["action"]?.ToString() == "Appointments" ? "active" : string.Empty)">
-                        <a asp-controller="Management" asp-action="Appointments" class="nav-link">Lịch hẹn</a>
-                    </li>
-                    <li class="nav-item @(ViewContext.RouteData.Values["action"]?.ToString() == "Profile" ? "active" : string.Empty)">
-                        <a asp-controller="Home" asp-action="Profile" class="nav-link">Hồ sơ cá nhân</a>
-                    </li>
+                    @if (isLoggedIn && isAdmin)
+                    {
+                        <li class="nav-item @(currentController == "Management" && currentAction == "System" ? "active" : string.Empty)">
+                            <a asp-controller="Management" asp-action="System" class="nav-link">Tổng quan</a>
+                        </li>
+                        <li class="nav-item @(currentController == "Services" ? "active" : string.Empty)">
+                            <a asp-controller="Services" asp-action="Index" class="nav-link">Dịch vụ</a>
+                        </li>
+                        <li class="nav-item @(currentController == "Management" && currentAction == "Pets" ? "active" : string.Empty)">
+                            <a asp-controller="Management" asp-action="Pets" class="nav-link">Thú cưng</a>
+                        </li>
+                        <li class="nav-item @(currentController == "Management" && currentAction == "Appointments" ? "active" : string.Empty)">
+                            <a asp-controller="Management" asp-action="Appointments" class="nav-link">QL lịch hẹn</a>
+                        </li>
+                        <li class="nav-item @(currentController == "Management" && currentAction == "Adoptions" ? "active" : string.Empty)">
+                            <a asp-controller="Management" asp-action="Adoptions" class="nav-link">QL nhận nuôi</a>
+                        </li>
+                    }
+                    else if (isLoggedIn && isStaff)
+                    {
+                        <li class="nav-item @(currentController == "Services" && currentAction == "Catalog" ? "active" : string.Empty)">
+                            <a asp-controller="Services" asp-action="Catalog" class="nav-link">Dịch vụ</a>
+                        </li>
+                        <li class="nav-item @(currentController == "Management" && currentAction == "Pets" ? "active" : string.Empty)">
+                            <a asp-controller="Management" asp-action="Pets" class="nav-link">Thú cưng</a>
+                        </li>
+                        <li class="nav-item @(currentController == "Management" && currentAction == "Appointments" ? "active" : string.Empty)">
+                            <a asp-controller="Management" asp-action="Appointments" class="nav-link">QL lịch hẹn</a>
+                        </li>
+                        <li class="nav-item @(currentController == "Management" && currentAction == "Adoptions" ? "active" : string.Empty)">
+                            <a asp-controller="Management" asp-action="Adoptions" class="nav-link">QL nhận nuôi</a>
+                        </li>
+                    }
+                    else
+                    {
+                        <li class="nav-item @(currentController == "Home" && currentAction == "Index" ? "active" : string.Empty)">
+                            <a asp-controller="Home" asp-action="Index" class="nav-link">Tổng quan</a>
+                        </li>
+                        <li class="nav-item @(currentController == "Services" && currentAction == "Catalog" ? "active" : string.Empty)">
+                            <a asp-controller="Services" asp-action="Catalog" class="nav-link">Dịch vụ</a>
+                        </li>
+                        <li class="nav-item @(currentController == "Management" && currentAction == "Pets" ? "active" : string.Empty)">
+                            <a asp-controller="Management" asp-action="Pets" class="nav-link">Thú cưng</a>
+                        </li>
+                        <li class="nav-item @(currentController == "Management" && currentAction == "Appointments" ? "active" : string.Empty)">
+                            <a asp-controller="Management" asp-action="Appointments" class="nav-link">Lịch hẹn</a>
+                        </li>
+                        <li class="nav-item @(currentController == "Home" && currentAction == "Profile" ? "active" : string.Empty)">
+                            <a asp-controller="Home" asp-action="Profile" class="nav-link">Hồ sơ cá nhân</a>
+                        </li>
+                    }
                 </ul>
 
-                <form class="form-inline user-nav-search mx-lg-3 my-2 my-lg-0" method="get" asp-controller="Management" asp-action="Pets">
-                    <input type="search" class="form-control form-control-sm" name="searchTerm" placeholder="Tìm thú cưng" aria-label="Tìm thú cưng" />
-                    <button class="btn btn-primary btn-sm" type="submit" aria-label="Tìm thú cưng">
-                        <span class="fa fa-search"></span>
-                    </button>
-                </form>
+                @if (!hideSearchBox)
+                {
+                    <form class="form-inline user-nav-search mx-lg-3 my-2 my-lg-0" method="get" asp-controller="Management" asp-action="Pets">
+                        <div class="input-group input-group-sm">
+                            <input type="search" class="form-control" name="searchTerm" placeholder="Tìm thú cưng" aria-label="Tìm thú cưng" />
+                            <div class="input-group-append">
+                                <button class="btn btn-primary" type="submit" aria-label="Tìm thú cưng">
+                                    <span class="fa fa-search"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                }
 
                 <ul class="navbar-nav align-items-lg-center ml-lg-auto">
                     @if (isLoggedIn)
                     {
                         <li class="nav-item dropdown">
                             <a href="#" class="nav-link dropdown-toggle d-flex align-items-center" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <span class="public-avatar-fallback mr-2">@avatarInitial</span>
+                                @if (!string.IsNullOrWhiteSpace(avatarUrl))
+                                {
+                                    <img src="@avatarUrl" alt="Avatar" class="public-avatar-img mr-2" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
+                                    <span class="public-avatar-fallback mr-2" style="display:none;">@avatarInitial</span>
+                                }
+                                else
+                                {
+                                    <span class="public-avatar-fallback mr-2">@avatarInitial</span>
+                                }
                                 <span class="text-nowrap">@displayName</span>
                             </a>
                             <div class="dropdown-menu dropdown-menu-right">
-                                <a class="dropdown-item" asp-controller="Home" asp-action="Dashboard">Tổng quan</a>
-                                <a class="dropdown-item" asp-controller="Home" asp-action="Profile">Hồ sơ cá nhân</a>
+                                @if (isAdmin)
+                                {
+                                    <a class="dropdown-item" asp-controller="Management" asp-action="System">Tổng quan</a>
+                                    <a class="dropdown-item" asp-controller="Services" asp-action="Index">Dịch vụ</a>
+                                    <a class="dropdown-item" asp-controller="Management" asp-action="Pets">Thú cưng</a>
+                                    <a class="dropdown-item" asp-controller="Management" asp-action="Appointments">Quản lý lịch hẹn</a>
+                                    <a class="dropdown-item" asp-controller="Management" asp-action="Adoptions">Quản lý nhận nuôi</a>
+                                }
+                                else if (isStaff)
+                                {
+                                    <a class="dropdown-item" asp-controller="Services" asp-action="Catalog">Dịch vụ</a>
+                                    <a class="dropdown-item" asp-controller="Management" asp-action="Pets">Thú cưng</a>
+                                    <a class="dropdown-item" asp-controller="Management" asp-action="Appointments">Quản lý lịch hẹn</a>
+                                    <a class="dropdown-item" asp-controller="Management" asp-action="Adoptions">Quản lý nhận nuôi</a>
+                                }
+                                else
+                                {
+                                    <a class="dropdown-item" asp-controller="Home" asp-action="Dashboard">Tổng quan</a>
+                                    <a class="dropdown-item" asp-controller="Home" asp-action="Profile">Hồ sơ cá nhân</a>
+                                }
                                 <div class="dropdown-divider"></div>
                                 <form asp-controller="Account" asp-action="Logout" method="post" class="m-0">
                                     <button type="submit" class="dropdown-item">Đăng xuất</button>
@@ -167,6 +324,17 @@
 
     @RenderBody()
 
+    <div id="quickCreateModal" class="quick-create-modal" aria-hidden="true">
+        <div class="quick-create-backdrop"></div>
+        <div class="quick-create-dialog">
+            <div class="quick-create-header">
+                <strong id="quickCreateTitle">Thêm mới</strong>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="quickCreateClose">Đóng</button>
+            </div>
+            <iframe id="quickCreateFrame" class="quick-create-frame" src="about:blank" loading="lazy"></iframe>
+        </div>
+    </div>
+
     <script src="~/LayoutPetcare/js/jquery.min.js"></script>
     <script src="~/LayoutPetcare/js/jquery-migrate-3.0.1.min.js"></script>
     <script src="~/LayoutPetcare/js/popper.min.js"></script>
@@ -182,6 +350,54 @@
     <script src="~/LayoutPetcare/js/scrollax.min.js"></script>
     <script src="~/LayoutPetcare/js/main.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script>
+        if (window.self !== window.top) {
+            document.body.classList.add('iframe-modal-view');
+        }
+    </script>
+    <script>
+        (() => {
+            const modal = document.getElementById('quickCreateModal');
+            const frame = document.getElementById('quickCreateFrame');
+            const closeBtn = document.getElementById('quickCreateClose');
+            const backdrop = modal?.querySelector('.quick-create-backdrop');
+            const title = document.getElementById('quickCreateTitle');
+
+            if (!modal || !frame || !closeBtn || !backdrop || !title) return;
+
+            function closeModal() {
+                modal.classList.remove('show');
+                modal.setAttribute('aria-hidden', 'true');
+                frame.src = 'about:blank';
+            }
+
+            function openModal(url, modalTitle) {
+                title.textContent = modalTitle || 'Thêm mới';
+                frame.src = url;
+                modal.classList.add('show');
+                modal.setAttribute('aria-hidden', 'false');
+            }
+
+            document.addEventListener('click', (event) => {
+                const trigger = event.target.closest('.js-open-create-modal');
+                if (!trigger) return;
+
+                event.preventDefault();
+                const url = trigger.getAttribute('data-create-url') || trigger.getAttribute('href');
+                if (!url) return;
+
+                openModal(url, trigger.getAttribute('data-modal-title'));
+            });
+
+            closeBtn.addEventListener('click', closeModal);
+            backdrop.addEventListener('click', closeModal);
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && modal.classList.contains('show')) {
+                    closeModal();
+                }
+            });
+        })();
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

@@ -2,7 +2,8 @@
 
 @{
     ViewData["Title"] = "Dịch vụ chăm sóc";
-    Layout = "~/Views/Shared/_LayoutPetcarehub.cshtml";
+    var isStaffOrAdmin = User.IsInRole(RoleNames.Admin) || User.IsInRole(RoleNames.Staff);
+    Layout = isStaffOrAdmin ? "_Layout" : "~/Views/Shared/_LayoutPetcarehub.cshtml";
     var branches = ViewBag.BranchOptions as IEnumerable<dynamic> ?? [];
     var allPets = ViewBag.AllPetOptions as IEnumerable<dynamic> ?? [];
     var customerPets = ViewBag.CustomerPetOptions as IEnumerable<dynamic> ?? [];
@@ -102,6 +103,10 @@
             <div class="col-md-10 text-center heading-section">
                 <h2>Dịch vụ chăm sóc thú cưng</h2>
                 <p>Danh sách dịch vụ theo danh mục: Chăm sóc cơ bản, Y tế, Làm đẹp.</p>
+                @if (isStaffOrAdmin)
+                {
+                    <a asp-controller="Services" asp-action="Create" class="btn btn-primary mt-2">+ Tạo dịch vụ</a>
+                }
             </div>
         </div>
 
@@ -154,12 +159,22 @@
                                             <p class="text-muted mb-2">@(string.IsNullOrWhiteSpace(service.Description) ? "Chưa có mô tả" : service.Description)</p>
                                             <p class="mb-1"><strong>Giá:</strong> @service.Price.ToString("N0") đ</p>
                                             <p class="mb-3"><strong>Thời gian dự kiến:</strong> @service.DurationMinutes phút</p>
-                                            <button type="button"
-                                                    class="btn btn-primary mt-auto btn-service-book"
-                                                    data-service-id="@service.ServiceId"
-                                                    data-service-name="@service.ServiceName">
-                                                Đặt lịch ngay
-                                            </button>
+                                            @if (isStaffOrAdmin)
+                                            {
+                                                <div class="mt-auto d-flex gap-2">
+                                                    <a asp-controller="Services" asp-action="Edit" asp-route-id="@service.ServiceId" class="btn btn-outline-primary">Chỉnh sửa</a>
+                                                    <a asp-controller="Services" asp-action="Delete" asp-route-id="@service.ServiceId" class="btn btn-outline-danger">Xóa</a>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <button type="button"
+                                                        class="btn btn-primary mt-auto btn-service-book"
+                                                        data-service-id="@service.ServiceId"
+                                                        data-service-name="@service.ServiceName">
+                                                    Đặt lịch ngay
+                                                </button>
+                                            }
                                         </div>
                                     </div>
                                 </div>

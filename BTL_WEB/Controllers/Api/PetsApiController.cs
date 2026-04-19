@@ -74,8 +74,16 @@ public class PetsApiController : ControllerBase
                 pet.Species,
                 pet.Breed,
                 pet.Gender,
+                pet.DateOfBirth,
+                pet.Color,
+                pet.Weight,
+                pet.Description,
+                pet.HealthStatus,
+                pet.VaccinationStatus,
                 pet.AdoptionStatus,
                 pet.Status,
+                pet.BranchId,
+                pet.OwnerId,
                 Branch = pet.Branch.BranchName,
                 Owner = pet.Owner?.FullName,
                 Images = pet.PetImages.Select(x => x.ImageUrl)
@@ -83,7 +91,7 @@ public class PetsApiController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = RoleNames.StaffOrAdmin)]
+    [Authorize(Policy = RoleNames.AdminOnly)]
     public async Task<IActionResult> Create(PetApiRequest request)
     {
         if (!ModelState.IsValid)
@@ -116,7 +124,7 @@ public class PetsApiController : ControllerBase
     }
 
     [HttpPut("{id:int}")]
-    [Authorize(Policy = RoleNames.StaffOrAdmin)]
+    [Authorize(Policy = RoleNames.AdminOnly)]
     public async Task<IActionResult> Update(int id, PetApiRequest request)
     {
         var pet = await _context.Pets.FindAsync(id);
@@ -145,7 +153,7 @@ public class PetsApiController : ControllerBase
     }
 
     [HttpDelete("{id:int}")]
-    [Authorize(Policy = RoleNames.StaffOrAdmin)]
+    [Authorize(Policy = RoleNames.AdminOnly)]
     public async Task<IActionResult> Delete(int id)
     {
         var pet = await _context.Pets.FindAsync(id);

@@ -70,6 +70,7 @@ public class ManagementController : Controller
                 VaccinationStatus = p.VaccinationStatus,
                 AdoptionStatus = p.AdoptionStatus,
                 Status = p.Status,
+                BranchId = p.BranchId,
                 BranchName = p.Branch.BranchName,
                 OwnerName = p.Owner != null ? p.Owner.FullName : null
             })
@@ -212,6 +213,64 @@ public class ManagementController : Controller
         await _context.SaveChangesAsync();
 
         TempData["SuccessMessage"] = "Cập nhật trạng thái lịch hẹn thành công.";
+        return RedirectAfterUpdateAppointmentStatus(returnUrl);
+    }
+
+    [HttpPost]
+    [Authorize(Policy = RoleNames.StaffOrAdmin)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateAppointmentPaymentStatus(int appointmentId, string paymentStatus, string? returnUrl)
+    {
+        if (appointmentId <= 0)
+        {
+            TempData["ErrorMessage"] = "Dữ liệu cập nhật thanh toán không hợp lệ.";
+            return RedirectAfterUpdateAppointmentStatus(returnUrl);
+        }
+
+        var normalizedStatus = string.Equals(paymentStatus, "Paid", StringComparison.OrdinalIgnoreCase)
+            ? "Paid"
+            : "Pending";
+
+        var appointment = await _context.Appointments
+            .Include(a => a.Payments)
+            .Include(a => a.AppointmentServices)
+            .FirstOrDefaultAsync(a => a.AppointmentId == appointmentId);
+
+        if (appointment is null)
+        {
+            TempData["ErrorMessage"] = "Không tìm thấy lịch hẹn cần cập nhật thanh toán.";
+            return RedirectAfterUpdateAppointmentStatus(returnUrl);
+        }
+
+        var payment = appointment.Payments
+            .OrderByDescending(p => p.PaymentDate)
+            .FirstOrDefault();
+
+        if (payment is null)
+        {
+            var amount = appointment.AppointmentServices.Sum(s => s.Quantity * s.UnitPrice);
+            payment = new Payment
+            {
+                AppointmentId = appointmentId,
+                Amount = amount <= 0 ? 0 : amount,
+                PaymentMethod = "Cash",
+                PaymentDate = DateTime.Now,
+                PaymentStatus = normalizedStatus
+            };
+
+            _context.Payments.Add(payment);
+        }
+        else
+        {
+            payment.PaymentStatus = normalizedStatus;
+            payment.PaymentDate = DateTime.Now;
+        }
+
+        await _context.SaveChangesAsync();
+        TempData["SuccessMessage"] = normalizedStatus == "Paid"
+            ? "Đã xác nhận thanh toán cho lịch hẹn."
+            : "Đã chuyển trạng thái về chưa thanh toán.";
+
         return RedirectAfterUpdateAppointmentStatus(returnUrl);
     }
 
@@ -453,7 +512,11 @@ public class ManagementController : Controller
                 BranchName = a.Branch.BranchName,
                 AppointmentDateTime = a.AppointmentDateTime,
                 Status = a.Status,
-                Notes = a.Notes
+                Notes = a.Notes,
+                PaymentStatus = a.Payments
+                    .OrderByDescending(p => p.PaymentDate)
+                    .Select(p => p.PaymentStatus)
+                    .FirstOrDefault() ?? "Pending"
             })
             .ToListAsync();
 
@@ -702,10 +765,16 @@ public class ManagementController : Controller
         return RedirectAfterUpdateAdoptionRequestStatus(returnUrl);
     }
 
-    public async Task<IActionResult> Adoptions(string? status)
+    public async Task<IActionResult> Adoptions(string? status, int petPage = 1)
     {
         var currentUserId = await ResolveCurrentUserIdAsync();
         var isStaffOrAdmin = IsStaffOrAdmin();
+        const int petPageSize = 8;
+
+        if (petPage < 1)
+        {
+            petPage = 1;
+        }
 
         var requestsQuery = _context.AdoptionRequests
             .AsNoTracking()
@@ -798,13 +867,23 @@ public class ManagementController : Controller
             })
             .ToListAsync();
 
-        var availablePets = await _context.Pets
+        var availablePetsQuery = _context.Pets
             .AsNoTracking()
             .Include(p => p.Branch)
             .Include(p => p.PetImages)
             .Where(p => p.AdoptionStatus == "Available")
-            .OrderByDescending(p => p.CreatedAt)
-            .Take(60)
+            .OrderByDescending(p => p.CreatedAt);
+
+        var availablePetsTotalItems = await availablePetsQuery.CountAsync();
+        var availablePetsTotalPages = Math.Max(1, (int)Math.Ceiling(availablePetsTotalItems / (double)petPageSize));
+        if (petPage > availablePetsTotalPages)
+        {
+            petPage = availablePetsTotalPages;
+        }
+
+        var availablePets = await availablePetsQuery
+            .Skip((petPage - 1) * petPageSize)
+            .Take(petPageSize)
             .Select(p => new AvailablePetCardViewModel
             {
                 PetId = p.PetId,
@@ -827,6 +906,10 @@ public class ManagementController : Controller
         var model = new AdoptionsPageViewModel
         {
             Status = status,
+            AvailablePetsPageIndex = petPage,
+            AvailablePetsPageSize = petPageSize,
+            AvailablePetsTotalItems = availablePetsTotalItems,
+            AvailablePetsTotalPages = availablePetsTotalPages,
             AvailablePets = availablePets,
             Requests = requests,
             Contracts = contracts,
@@ -962,7 +1045,7 @@ public class ManagementController : Controller
         };
     }
 
-    [Authorize(Policy = RoleNames.StaffOrAdmin)]
+    [Authorize(Policy = RoleNames.AdminOnly)]
     public async Task<IActionResult> System(string? keyword)
     {
         var usersQuery = _context.Users
@@ -985,7 +1068,8 @@ public class ManagementController : Controller
                 Username = u.Username,
                 FullName = u.FullName,
                 RoleName = u.Role.RoleName,
-                Status = u.Status
+                Status = u.Status,
+                CreatedAt = u.CreatedAt
             })
             .ToListAsync();
 
@@ -1003,7 +1087,8 @@ public class ManagementController : Controller
                 BranchId = s.BranchId,
                 BranchName = s.Branch.BranchName,
                 Position = s.Position,
-                Status = s.Status
+                Status = s.Status,
+                CreatedAt = s.User.CreatedAt
             })
             .ToListAsync();
 
@@ -1023,12 +1108,29 @@ public class ManagementController : Controller
             })
             .ToListAsync();
 
+        var topServices = await _context.AppointmentServices
+            .AsNoTracking()
+            .Include(a => a.Service)
+            .GroupBy(a => new { a.ServiceId, a.Service.ServiceName })
+            .Select(g => new TopServiceSummaryViewModel
+            {
+                ServiceId = g.Key.ServiceId,
+                ServiceName = g.Key.ServiceName,
+                TotalQuantity = g.Sum(x => x.Quantity),
+                TotalRevenue = g.Sum(x => x.Quantity * x.UnitPrice)
+            })
+            .OrderByDescending(x => x.TotalQuantity)
+            .ThenByDescending(x => x.TotalRevenue)
+            .Take(8)
+            .ToListAsync();
+
         var model = new SystemPageViewModel
         {
             Keyword = keyword,
             Users = users,
             Staff = staff,
-            Payments = payments
+            Payments = payments,
+            TopServices = topServices
         };
 
         return View(model);

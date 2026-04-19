@@ -27,6 +27,10 @@ public class AppointmentsPageViewModel
 public class AdoptionsPageViewModel
 {
     public string? Status { get; set; }
+    public int AvailablePetsPageIndex { get; set; } = 1;
+    public int AvailablePetsPageSize { get; set; } = 8;
+    public int AvailablePetsTotalItems { get; set; }
+    public int AvailablePetsTotalPages { get; set; } = 1;
     public List<AvailablePetCardViewModel> AvailablePets { get; set; } = [];
     public List<AdoptionRequestSummaryViewModel> Requests { get; set; } = [];
     public List<AdoptionContractSummaryViewModel> Contracts { get; set; } = [];
@@ -99,6 +103,15 @@ public class SystemPageViewModel
     public List<UserSummaryViewModel> Users { get; set; } = [];
     public List<StaffSummaryViewModel> Staff { get; set; } = [];
     public List<PaymentSummaryViewModel> Payments { get; set; } = [];
+    public List<TopServiceSummaryViewModel> TopServices { get; set; } = [];
+}
+
+public class TopServiceSummaryViewModel
+{
+    public int ServiceId { get; set; }
+    public string ServiceName { get; set; } = string.Empty;
+    public int TotalQuantity { get; set; }
+    public decimal TotalRevenue { get; set; }
 }
 
 public class PetSummaryViewModel
@@ -111,6 +124,7 @@ public class PetSummaryViewModel
     public string? VaccinationStatus { get; set; }
     public string AdoptionStatus { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
+    public int BranchId { get; set; }
     public string BranchName { get; set; } = string.Empty;
     public string? OwnerName { get; set; }
 }
@@ -159,6 +173,7 @@ public class AppointmentSummaryViewModel
     public DateTime AppointmentDateTime { get; set; }
     public string Status { get; set; } = string.Empty;
     public string? Notes { get; set; }
+    public string PaymentStatus { get; set; } = "Pending";
 }
 
 public class AppointmentServiceSummaryViewModel
@@ -212,6 +227,7 @@ public class UserSummaryViewModel
     public string FullName { get; set; } = string.Empty;
     public string RoleName { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
 }
 
 public class StaffSummaryViewModel
@@ -223,4 +239,5 @@ public class StaffSummaryViewModel
     public string BranchName { get; set; } = string.Empty;
     public string Position { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
 }

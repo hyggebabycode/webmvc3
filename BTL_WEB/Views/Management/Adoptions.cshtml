@@ -69,6 +69,39 @@
                                         </div>
                                     </div>
                                 }
+
+                                @if (Model.AvailablePetsTotalPages > 1)
+                                {
+                                    <div class="col-12 mt-2">
+                                        <nav aria-label="Phân trang thú cưng nhận nuôi">
+                                            <ul class="pagination justify-content-center mb-0">
+                                                <li class="page-item @(Model.AvailablePetsPageIndex > 1 ? string.Empty : "disabled")">
+                                                    <a class="page-link"
+                                                       asp-action="Adoptions"
+                                                       asp-route-status="@Model.Status"
+                                                       asp-route-petPage="@(Model.AvailablePetsPageIndex - 1)">Trước</a>
+                                                </li>
+
+                                                @for (var i = 1; i <= Model.AvailablePetsTotalPages; i++)
+                                                {
+                                                    <li class="page-item @(i == Model.AvailablePetsPageIndex ? "active" : string.Empty)">
+                                                        <a class="page-link"
+                                                           asp-action="Adoptions"
+                                                           asp-route-status="@Model.Status"
+                                                           asp-route-petPage="@i">@i</a>
+                                                    </li>
+                                                }
+
+                                                <li class="page-item @(Model.AvailablePetsPageIndex < Model.AvailablePetsTotalPages ? string.Empty : "disabled")">
+                                                    <a class="page-link"
+                                                       asp-action="Adoptions"
+                                                       asp-route-status="@Model.Status"
+                                                       asp-route-petPage="@(Model.AvailablePetsPageIndex + 1)">Sau</a>
+                                                </li>
+                                            </ul>
+                                        </nav>
+                                    </div>
+                                }
                             }
                         </div>
                     </div>

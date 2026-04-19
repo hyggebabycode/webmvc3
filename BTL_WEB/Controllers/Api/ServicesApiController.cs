@@ -56,7 +56,7 @@ public class ServicesApiController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = RoleNames.StaffOrAdmin)]
+    [Authorize(Policy = RoleNames.AdminOnly)]
     public async Task<IActionResult> Create(ServiceApiRequest request)
     {
         var service = new Service
@@ -75,7 +75,7 @@ public class ServicesApiController : ControllerBase
     }
 
     [HttpPut("{id:int}")]
-    [Authorize(Policy = RoleNames.StaffOrAdmin)]
+    [Authorize(Policy = RoleNames.AdminOnly)]
     public async Task<IActionResult> Update(int id, ServiceApiRequest request)
     {
         var service = await _context.Services.FindAsync(id);
@@ -95,7 +95,7 @@ public class ServicesApiController : ControllerBase
     }
 
     [HttpDelete("{id:int}")]
-    [Authorize(Policy = RoleNames.StaffOrAdmin)]
+    [Authorize(Policy = RoleNames.AdminOnly)]
     public async Task<IActionResult> Delete(int id)
     {
         var service = await _context.Services.FindAsync(id);

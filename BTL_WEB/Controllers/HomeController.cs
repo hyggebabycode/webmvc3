@@ -3,6 +3,8 @@ using System.Security.Claims;
 using BTL_WEB.Helpers;
 using BTL_WEB.Models;
 using BTL_WEB.Models.ViewModels;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -147,10 +149,53 @@ namespace BTL_WEB.Controllers
             currentUser.Phone = string.IsNullOrWhiteSpace(input.Phone) ? null : input.Phone.Trim();
             currentUser.Email = (input.Email ?? string.Empty).Trim();
             HttpContext.Session.SetString("ProfileAvatarUrl", (input.AvatarUrl ?? string.Empty).Trim());
+            HttpContext.Session.SetString(ClaimNames.FullName, currentUser.FullName);
 
             await _context.SaveChangesAsync();
+            await RefreshUserClaimsAsync(currentUser);
             TempData["ProfileSaved"] = "Da cap nhat ho so thanh cong.";
             return RedirectToAction(nameof(Profile));
+        }
+
+        private async Task RefreshUserClaimsAsync(User currentUser)
+        {
+            var authResult = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            if (authResult?.Principal?.Identity?.IsAuthenticated != true)
+            {
+                return;
+            }
+
+            var role = authResult.Principal.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
+            var username = authResult.Principal.FindFirstValue(ClaimTypes.Name) ?? currentUser.Username;
+            var staffId = authResult.Principal.FindFirstValue("StaffId");
+
+            var claims = new List<Claim>
+            {
+                new(ClaimTypes.NameIdentifier, currentUser.UserId.ToString()),
+                new(ClaimTypes.Name, username ?? string.Empty),
+                new(ClaimNames.UserId, currentUser.UserId.ToString()),
+                new(ClaimNames.FullName, currentUser.FullName)
+            };
+
+            if (!string.IsNullOrWhiteSpace(role))
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
+
+            if (!string.IsNullOrWhiteSpace(staffId))
+            {
+                claims.Add(new Claim("StaffId", staffId));
+            }
+
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                new ClaimsPrincipal(identity),
+                authResult.Properties ?? new AuthenticationProperties
+                {
+                    AllowRefresh = true,
+                    IsPersistent = false
+                });
         }
 
         private async Task<User?> ResolveCurrentUserAsync(bool track = false)

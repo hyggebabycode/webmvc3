@@ -20,7 +20,8 @@ public class ServicesController : Controller
         _context = context;
     }
 
-    public async Task<IActionResult> Index(string? keyword, int? categoryId, string? status, int page = 1, int pageSize = 10)
+    [Authorize(Policy = RoleNames.AdminOnly)]
+    public async Task<IActionResult> Index(string? keyword, int? categoryId, string? priceRange, string? status, int page = 1, int pageSize = 10)
     {
         var query = _context.Services
             .Include(x => x.Category)
@@ -36,6 +37,17 @@ public class ServicesController : Controller
             query = query.Where(x => x.CategoryId == categoryId.Value);
         }
 
+        if (!string.IsNullOrWhiteSpace(priceRange))
+        {
+            query = priceRange switch
+            {
+                "10000-100000" => query.Where(x => x.Price >= 10000m && x.Price < 100000m),
+                "100000-500000" => query.Where(x => x.Price >= 100000m && x.Price < 500000m),
+                "500000-plus" => query.Where(x => x.Price >= 500000m),
+                _ => query
+            };
+        }
+
         if (!string.IsNullOrWhiteSpace(status))
         {
             query = query.Where(x => x.Status == status);
@@ -43,6 +55,7 @@ public class ServicesController : Controller
 
         ViewBag.Keyword = keyword;
         ViewBag.CategoryId = categoryId;
+        ViewBag.PriceRange = priceRange;
         ViewBag.Status = status;
         ViewBag.PageSize = pageSize;
         ViewBag.Categories = await _context.ServiceCategories
@@ -53,6 +66,7 @@ public class ServicesController : Controller
         return View(await PaginatedList<Service>.CreateAsync(query.OrderBy(x => x.ServiceName), page, pageSize));
     }
 
+    [Authorize(Policy = RoleNames.AdminOnly)]
     public async Task<IActionResult> Details(int id)
     {
         var service = await _context.Services
@@ -158,11 +172,13 @@ public class ServicesController : Controller
             .FirstOrDefaultAsync();
     }
 
+    [Authorize(Policy = RoleNames.AdminOnly)]
     public async Task<IActionResult> Create()
     {
         return View(await BuildModelAsync(new ServiceFormViewModel()));
     }
 
+    [Authorize(Policy = RoleNames.AdminOnly)]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(ServiceFormViewModel model)
@@ -186,6 +202,7 @@ public class ServicesController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [Authorize(Policy = RoleNames.AdminOnly)]
     public async Task<IActionResult> Edit(int id)
     {
         var service = await _context.Services.FindAsync(id);
@@ -206,6 +223,7 @@ public class ServicesController : Controller
         }));
     }
 
+    [Authorize(Policy = RoleNames.AdminOnly)]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(int id, ServiceFormViewModel model)
@@ -237,6 +255,7 @@ public class ServicesController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [Authorize(Policy = RoleNames.AdminOnly)]
     public async Task<IActionResult> Delete(int id)
     {
         var service = await _context.Services
@@ -246,6 +265,7 @@ public class ServicesController : Controller
         return service is null ? NotFound() : View(service);
     }
 
+    [Authorize(Policy = RoleNames.AdminOnly)]
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteConfirmed(int id)
